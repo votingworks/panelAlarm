@@ -2,6 +2,7 @@
    by: Jesse DeWald
    Company: VotingWorks
    date: 11/14/2023
+   version: 0.1
    license: MIT License - Feel free to use this code for any purpose.
    This code checks the state of an i2c button (at a default address)
    It sends the state to a host via an HID emulation
