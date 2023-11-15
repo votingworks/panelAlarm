@@ -10,8 +10,6 @@
 
 #include <SparkFun_Qwiic_Button.h>  // Include the library for the SparkFun Qwiic Button
 #include <Keyboard.h>               // Include the library for keyboard HID emulation
-
-// Define DEBUG for debugging. Comment this line to disable debug messages
 #define DEBUG true
 
 #ifdef DEBUG
@@ -37,21 +35,21 @@ enum Command { CMD_NONE,
 AlarmState currentAlarm;  // state of the alarm. probably doesn't need to be global but I'm being lazy
 
 // Constants
-const uint8_t BUFFERSIZE = 100;      //command buffer size
-const uint8_t MAXRETRIES = 500;      //maximum number of state alerts. not currently implemented
+const uint8_t BUFFERSIZE = 100;       //command buffer size
+const uint8_t MAXRETRIES = 500;       //maximum number of state alerts. not currently implemented
 const uint16_t ACKTIMEOUT_MS = 5000;  //time between alert spamming
-const uint16_t DEBOUNCE = 1000; //button debounce time. not currenlty implemented.
-const uint16_t BAUDRATE = 115200; //uart comms baud rate
+const uint16_t DEBOUNCE = 1000;       //button debounce time. not currenlty implemented.
+const uint16_t BAUDRATE = 115200;     //uart comms baud rate
 
 
 
 char txBuffer[BUFFERSIZE];  // Buffer for serial communication
 
 void setup() {
-  Keyboard.begin();      // Start keyboard HID emulation
-  Wire.begin();          // Start I2C communication
+  Keyboard.begin();        // Start keyboard HID emulation
+  Wire.begin();            // Start I2C communication
   Serial.begin(BAUDRATE);  // Start serial communication at baud rate
-  delay(1000);           // Delay to stabilize I2C communication
+  delay(1000);             // Delay to stabilize I2C communication
   // Check if the Qwiic Button is connected and initialized properly
   if (panelSwitch.begin() == false) {
     DEBUG_PRINTLN("ERROR: ALARM FAILED TO INITIALIZE");  // Print error message if initialization fails
@@ -124,7 +122,7 @@ void spamAndAck(char alert) {
   // DEBUG_PRINTLN(alert);  // Print the alert character
   do {
     Keyboard.write(alert);        // Send the alert character as keyboard input
-    delay(5000);         // Delay between sending alerts
+    delay(5000);                  // Delay between sending alerts
   } while (!Serial.available());  // Loop until there is data on the serial
   getTX();                        // Read the data from serial
   // Check if the received command is acknowledgment
