@@ -40,11 +40,12 @@ const uint8_t BUFFERSIZE = 100;       //command buffer size
 const uint8_t MAXRETRIES = 500;       //maximum number of state alerts. not currently implemented
 const uint16_t ACKTIMEOUT_MS = 5000;  //time between alert spamming
 const uint16_t DEBOUNCE = 1000;       //button debounce time. not currenlty implemented.
-const uint16_t BAUDRATE = 115200;     //uart comms baud rate
+const uint32_t BAUDRATE = 115200;     //uart comms baud rate
 
 
 
 char txBuffer[BUFFERSIZE];  // Buffer for serial communication
+char ackResponseBuffer;     // Buffer for ack response character
 
 void setup() {
   Keyboard.begin();        // Start keyboard HID emulation
@@ -114,8 +115,7 @@ Command waitForCMD() {
   while (!Serial.available()) {};      // Wait until there is data on the serial
   getTX();                             // Read the data from serial
   Command parsed = parseTX(txBuffer);  // Parse the command from the data
-  resetBuffer();                       // Reset the buffer for the next command
-  return parsed;                       // Return the parsed command
+  return parsed;  // Return the parsed command
 }
 
 void spamAndAck(char alert) {
@@ -123,14 +123,15 @@ void spamAndAck(char alert) {
   // DEBUG_PRINTLN(alert);  // Print the alert character
   do {
     Keyboard.write(alert);        // Send the alert character as keyboard input
-    delay(5000);                  // Delay between sending alerts
+    delay(ACKTIMEOUT_MS);         // Delay between sending alerts
   } while (!Serial.available());  // Loop until there is data on the serial
   getTX();                        // Read the data from serial
   // Check if the received command is acknowledgment
   if (parseTX(txBuffer) == CMD_ACK) {
-    int length = strlen(txBuffer);   // Get the length of the received data
-    char ackResponse = txBuffer[5];  // Extract the acknowledgment response
-    resetBuffer();                   // Reset the buffer
+    // int length = strlen(txBuffer);   // Get the length of the received data
+    // char ackResponse = txBuffer[5];  // Extract the acknowledgment response
+    char ackResponse = ackResponseBuffer;
+
     // Check if the acknowledgment response matches the alert
     if (ackResponse != alert) {
       DEBUG_PRINTLN("WRONG ACK");  // Print error message if acknowledgment is wrong
@@ -179,9 +180,9 @@ char* getTX() {
 
 Command parseTX(char* strBuffer) {
   // Function to parse the transmitted data and extract command
-  // Check if the data is enclosed in '<' and '>'
-  uint8_t length = strlen(strBuffer);
-  char message[length - 2 + 1];  // Buffer to store the actual message excluding '<' and '>'
+  Command retCMD;                      //return variable
+  uint8_t length = strlen(strBuffer);  // Check if the data is enclosed in '<' and '>'
+  char message[length - 2 + 1];        // Buffer to store the actual message excluding '<' and '>'
   if (length > 2 && strBuffer[0] == '<' && strBuffer[length - 1] == '>') {
     strncpy(message, strBuffer + 1, length - 2);  // Copy the message to buffer
     message[length - 2] = '\0';                   // Null-terminate the message
@@ -189,20 +190,24 @@ Command parseTX(char* strBuffer) {
     // Compare the message with predefined commands and return the corresponding enum value
     if (strcmp(message, "ARM") == 0) {
       DEBUG_PRINTLN("ARM command received.");
-      return CMD_ARM;
+      retCMD = CMD_ARM;
     } else if (strcmp(message, "UNARM") == 0) {
       DEBUG_PRINTLN("UNARM command received.");
-      return CMD_UNARM;
+      retCMD = CMD_UNARM;
     } else if (strncmp(message, "ACK", 3) == 0) {
       DEBUG_PRINTLN("ACK command received.");
-      return CMD_ACK;
+      if (length > 5) ackResponseBuffer = txBuffer[5];  //check if the ack command has a char response
+      else ackResponseBuffer = '0';                     // if not, add a 0 to teh ackreponse, which is an unknown ack
+      retCMD = CMD_ACK;
     } else {
       DEBUG_PRINT("Unknown command: ");
       DEBUG_PRINTLN(message);
-      return CMD_UNKNOWN;
+      retCMD = CMD_UNKNOWN;
     }
   } else {
     DEBUG_PRINTLN("No valid message found.");
-    return CMD_NONE;  // Return CMD_NONE if the data does not match the format
+    retCMD = CMD_NONE;  // Return CMD_NONE if the data does not match the format
   }
+  resetBuffer();
+  return retCMD;
 }
